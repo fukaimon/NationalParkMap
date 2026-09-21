@@ -1,0 +1,156 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({channel: process.env.BROWSER_CHANNEL || 'chrome', headless: true});
+const origin = process.env.TEST_URL || 'http://127.0.0.1:4173';
+let passed = 0;
+function pass(name) { console.log(`PASS ${++passed}: ${name}`); }
+async function point(page, lat, lng) {
+  await page.locator('#latInput').fill(String(lat));
+  await page.locator('#lngInput').fill(String(lng));
+  await page.locator('#coordForm button').click();
+  await page.waitForFunction(() => document.querySelector('#result').className === 'hit-list');
+}
+const square = [[139,35],[139.01,35],[139.01,35.01],[139,35.01],[139,35]];
+const fixture = {type:'FeatureCollection',features:[{type:'Feature',properties:{parkName:'検証用国定公園',parkType:'国定公園',zoneName:'第１種特別地域',mapSheet:'検証図1',mapUrl:'https://example.com/map.pdf'},geometry:{type:'Polygon',coordinates:[square]}}]};
+const errors = [];
+try {
+  const context = await browser.newContext({geolocation:{latitude:35.360626,longitude:138.727363,accuracy:60},permissions:['geolocation']});
+  // Leave every external service unavailable throughout the test.
+  await context.route('https://**', route => route.abort());
+  const page=await context.newPage();
+  page.on('pageerror', e=>errors.push(e.message));
+  await page.goto(origin);
+  await page.waitForFunction(()=>document.querySelector('#offlineStatus').textContent.includes('準備完了'),{},{timeout:90000});
+  assert.match(await page.locator('#dataStatus').innerText(),/15,293/);
+  const overlay = page.getByLabel('区域図', {exact:true});
+  const hasAreas = () => [...document.querySelectorAll('.leaflet-overlay-pane canvas')].some(canvas => {
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) return true;
+    return false;
+  });
+  await page.waitForFunction(hasAreas, {}, {timeout:90000});
+  assert.equal(await page.locator('#readLat').innerText(), '-');
+  assert.equal(await overlay.isChecked(), true);
+  pass('地点未選択の初期表示から区域図を描画');
+  await overlay.uncheck();
+  await page.waitForFunction(fn => !eval(`(${fn})`)(), hasAreas.toString());
+  assert.equal(await page.locator('.legend').isVisible(), false);
+  await point(page,35.360626,138.727363);
+  await page.waitForTimeout(500);
+  assert.equal(await page.evaluate(hasAreas), false);
+  assert.match(await page.locator('#result').innerText(), /特別保護地区/);
+  await overlay.check();
+  await page.waitForFunction(hasAreas, {}, {timeout:90000});
+  assert.equal(await page.locator('.legend').isVisible(), true);
+  pass('区域図の非表示中も判定でき、再表示で現在の範囲の区域図を復元');
+  await point(page,35.360626,138.727363);
+  assert.match(await page.locator('#result').innerText(),/富士箱根伊豆/);
+  assert.match(await page.locator('#result').innerText(),/特別保護地区/);
+  pass('外部通信なしで同梱公式データを用いた富士山の判定');
+  await page.screenshot({path:'/private/tmp/park-map-desktop.png',fullPage:true});
+  await page.locator('#locateButton').click();
+  await page.waitForFunction(()=>document.querySelector('#pointInfo').textContent.includes('測位精度: 約60 m'));
+  await page.waitForFunction(()=>document.querySelector('#result').className==='hit-list');
+  pass('現在地と測位精度の表示');
+  await page.locator('#areaFileInput').setInputFiles({name:'quasi-test.geojson',mimeType:'application/geo+json',buffer:Buffer.from(JSON.stringify(fixture))});
+  await page.waitForFunction(()=>document.querySelector('#coverage').textContent.includes('quasi-test.geojson'));
+  await point(page,35.005,139.005);
+  assert.match(await page.locator('#result').innerText(),/検証用国定公園/);
+  assert.match(await page.locator('#result').innerText(),/第1種特別地域/);
+  assert.equal(await page.locator('#result a').getAttribute('href'),'https://example.com/map.pdf');
+  pass('国定公園ファイルの追加・地種区分の正規化・区域図リンク');
+  await point(page,35,139.005);
+  assert.match(await page.locator('#result').innerText(),/境界上/);
+  pass('境界上を確定した内部と区別');
+  await context.setOffline(true);
+  await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#offlineStatus').textContent.includes('準備完了'),{},{timeout:90000});
+  await point(page,35.005,139.005);
+  assert.match(await page.locator('#result').innerText(),/検証用国定公園/);
+  await point(page,35.360626,138.727363);
+  assert.match(await page.locator('#result').innerText(),/富士箱根伊豆/);
+  pass('通信を完全遮断して再起動後、公式・追加データの両方を復元して判定');
+  await page.locator('#placeInput').fill('上高地');
+  await page.locator('#placeForm button').click();
+  await page.waitForFunction(()=>document.querySelector('#searchStatus').textContent.includes('通信が必要'));
+  await point(page,35.681236,139.767125);
+  assert.match(await page.locator('#result').innerText(),/区域外とは断定できません/);
+  pass('オフライン地名検索の案内・未収録の断定回避');
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await page.screenshot({path:'/private/tmp/park-map-mobile.png',fullPage:true});
+  pass('スマートフォン幅で横溢れがない');
+  fixture.features[0].properties.zoneName='普通地域';
+  await page.locator('#areaFileInput').setInputFiles({name:'quasi-test.geojson',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+  await page.waitForFunction(()=>!document.querySelector('#areaFileInput').disabled);
+  await point(page,35.005,139.005);
+  assert.match(await page.locator('#result').innerText(),/普通地域/);
+  assert.doesNotMatch(await page.locator('#result').innerText(),/第1種特別地域/);
+  assert.match(await page.locator('#dataStatus').innerText(),/15,294/);
+  pass('同名追加ファイルは区域を重複させず置換');
+  await page.locator('#coverage details').filter({hasText:'quasi-test.geojson'}).locator('summary').click();
+  await page.locator('[data-remove]').click();
+  await page.waitForFunction(()=>document.querySelector('#dataStatus').textContent.includes('15,293'));
+  await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#offlineStatus').textContent.includes('準備完了'),{},{timeout:90000});
+  assert.doesNotMatch(await page.locator('#coverage').innerText(),/quasi-test/);
+  pass('追加ファイルの削除をオフライン再起動後も保持');
+  await context.close();
+
+  const noMap = await browser.newContext({serviceWorkers:'block'});
+  await noMap.route('**/leaflet.js',route=>route.abort());
+  await noMap.route('https://**',route=>route.abort());
+  const p=await noMap.newPage();
+  p.on('pageerror', e=>errors.push(e.message));
+  await p.goto(origin);
+  await p.waitForFunction(()=>document.querySelector('#dataStatus').textContent.includes('15,293'),{},{timeout:90000});
+  await point(p,35.360626,138.727363);
+  assert.match(await p.locator('#result').innerText(),/富士箱根伊豆/);
+  assert.equal(await p.evaluate(()=>typeof window.L),'undefined');
+  pass('地図ライブラリがなくても区域を判定');
+  const kml = await p.evaluate(async()=>{
+    const {kmlToGeoJson}=await import('./src/kml.js');
+    const {prepareCollection,geometryRelation}=await import('./src/geometry.js');
+    const text='<kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><name>穴あり区域</name><ExtendedData><Data name="zone_name"><value>第2種特別地域</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>135,35 136,35 136,36 135,36</coordinates></LinearRing></outerBoundaryIs><innerBoundaryIs><LinearRing><coordinates>135.2,35.2 135.4,35.2 135.4,35.4 135.2,35.4</coordinates></LinearRing></innerBoundaryIs></Polygon></Placemark></kml>';
+    const data=prepareCollection(kmlToGeoJson(text,'test.kml'));
+    let rejected=false;
+    try {kmlToGeoJson(text.replace('135,35','35,135'),'invalid.kml');} catch {rejected=true;}
+    return {hole:geometryRelation(data.features[0].geometry,[135.3,35.3]),zone:data.features[0].properties.zoneName,rejected};
+  });
+  assert.deepEqual(kml,{hole:'outside',zone:'第2種特別地域',rejected:true});
+  pass('名前空間付きKMLの穴・属性保持・座標逆転の拒否');
+  await p.locator('#areaFileInput').setInputFiles({name:'bad.geojson',mimeType:'application/json',buffer:Buffer.from('{invalid')});
+  await p.waitForFunction(()=>document.querySelector('#dataMessage').textContent.includes('既存'));
+  await point(p,35.360626,138.727363);
+  assert.match(await p.locator('#result').innerText(),/富士箱根伊豆/);
+  pass('無効ファイルで既存の判定データを失わない');
+  await noMap.route('https://msearch.gsi.go.jp/**', route=>route.fulfill({json:[
+    {geometry:{coordinates:[139.767125,35.681236]},properties:{title:'同名の候補A'}},
+    {geometry:{coordinates:[138.727363,35.360626]},properties:{title:'同名の候補B'}},
+  ]}));
+  await p.locator('#placeInput').fill('同名');
+  await p.locator('#placeForm button').click();
+  await p.locator('#searchResults button').nth(1).waitFor();
+  await p.locator('#searchResults button').nth(1).click();
+  await p.waitForFunction(()=>document.querySelector('#pointInfo').textContent.includes('候補B'));
+  await p.waitForFunction(()=>document.querySelector('#result').className==='hit-list');
+  assert.match(await p.locator('#result').innerText(),/富士箱根伊豆/);
+  pass('地名検索の先頭候補を自動採用せず選択地点を判定');
+  await noMap.close();
+
+  const empty=await browser.newContext({serviceWorkers:'block'});
+  await empty.route('**/national-parks.geojson',r=>r.abort());
+  await empty.route('https://**',r=>r.abort());
+  const e=await empty.newPage();
+  e.on('pageerror',err=>errors.push(err.message));
+  await e.goto(origin);
+  await e.waitForFunction(()=>document.querySelector('#dataStatus').textContent==='未読込');
+  await e.locator('#latInput').fill('35'); await e.locator('#lngInput').fill('139');
+  await e.locator('#coordForm button').click();
+  await e.waitForFunction(()=>document.querySelector('#result').textContent.includes('判定できません'));
+  assert.doesNotMatch(await e.locator('#result').innerText(),/該当なし/);
+  pass('初回の区域読込失敗を区域外と誤判定しない');
+  await empty.close();
+  assert.deepEqual(errors,[]);
+  console.log(`${passed} browser checks passed; no uncaught page errors.`);
+} finally { await browser.close(); }

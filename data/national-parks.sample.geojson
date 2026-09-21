@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "name": "national-parks-sample",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "parkName": "富士箱根伊豆国立公園",
+        "zoneName": "サンプル区域",
+        "source": "動作確認用の概略ポリゴン"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.62, 35.28],
+            [138.86, 35.28],
+            [138.86, 35.48],
+            [138.62, 35.48],
+            [138.62, 35.28]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parkName": "中部山岳国立公園",
+        "zoneName": "サンプル区域",
+        "source": "動作確認用の概略ポリゴン"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [137.45, 36.14],
+            [137.78, 36.14],
+            [137.78, 36.34],
+            [137.45, 36.34],
+            [137.45, 36.14]
+          ]
+        ]
+      }
+    }
+  ]
+}

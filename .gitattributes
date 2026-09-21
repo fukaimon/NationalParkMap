@@ -1,0 +1,2 @@
+data/national-parks.geojson filter=lfs diff=lfs merge=lfs -text
+vendor/nps/nps.shp filter=lfs diff=lfs merge=lfs -text
