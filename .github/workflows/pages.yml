@@ -1,0 +1,61 @@
+name: Publish park map
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source and actual LFS data
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare website
+        run: |
+          python3 - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+
+          source = Path('data/national-parks.geojson')
+          data = json.loads(source.read_text())
+          assert data['type'] == 'FeatureCollection' and data['features'], 'Missing park data'
+          site = Path('_site')
+          site.mkdir()
+          for name in ('index.html', 'styles.css', 'sw.js'):
+              shutil.copy2(name, site / name)
+          shutil.copytree('src', site / 'src')
+          shutil.copytree('vendor/leaflet', site / 'vendor/leaflet')
+          (site / 'data').mkdir()
+          shutil.copy2(source, site / source)
+          PY
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4

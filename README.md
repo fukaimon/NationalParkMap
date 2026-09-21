@@ -20,6 +20,16 @@ npx playwright install chromium
 BROWSER_CHANNEL=chromium npm run test:browser
 ```
 
+## iPhone向けのURL公開（GitHub Pages）
+
+1. GitHubのリポジトリで Settings → Pages → Build and deployment → Source を「GitHub Actions」にします。
+2. `.github/workflows/pages.yml` を含む変更をmainへコミット・プッシュします。
+3. Actionsの「Publish park map」が成功すると、Settings → PagesにURLが表示されます。通常は `https://fukaimon.github.io/NationalParkMap/` です。
+
+このワークフローはLFSの実データを取得し、アプリの配信に必要なファイルのみをPagesへ配置します。ブランチから直接公開する方式ではLFSの区域データを配信できません。GitHub FreeでPagesを使う場合は公開リポジトリが必要です。非公開リポジトリからの公開は対応する有料プランが必要で、通常のPagesサイト自体は公開されます。
+
+iPhoneのSafariで公開URLを開き、共有メニューからホーム画面に追加します。追加したアイコンからWi-Fi接続中に起動し、「オフライン判定の準備完了」を確認してください。その後、機内モードかつWi-Fiオフで再起動し、判定できるか確認します。背景地図のオフライン保存は未対応です。
+
 ## 使い方
 
 1. 初回は通信可能な状態で開き、区域データの読込と「オフライン判定の準備完了」を待ちます。判定データは約150 MiBあり、初回読込・保存に時間がかかります。
