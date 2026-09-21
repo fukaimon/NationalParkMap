@@ -34,7 +34,7 @@ jobs:
           assert data['type'] == 'FeatureCollection' and data['features'], 'Missing park data'
           site = Path('_site')
           site.mkdir()
-          for name in ('index.html', 'styles.css', 'sw.js'):
+          for name in ('index.html', 'styles.css', 'sw.js', 'app-icon.png', 'manifest.webmanifest'):
               shutil.copy2(name, site / name)
           shutil.copytree('src', site / 'src')
           shutil.copytree('vendor/leaflet', site / 'vendor/leaflet')

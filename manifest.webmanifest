@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "自然公園 区域判定マップ",
+  "short_name": "自然公園マップ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f4",
+  "theme_color": "#1f7a5a",
+  "icons": [
+    {
+      "src": "./app-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
