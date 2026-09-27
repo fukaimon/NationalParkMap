@@ -4,6 +4,33 @@ const browser = await chromium.launch({channel: process.env.BROWSER_CHANNEL || '
 const origin = process.env.TEST_URL || 'http://127.0.0.1:4173';
 let passed = 0;
 function pass(name) { console.log(`PASS ${++passed}: ${name}`); }
+async function checkMapExpansion(page) {
+  const map = page.locator('#map');
+  const button = page.locator('#expandMapButton');
+  await button.scrollIntoViewIfNeeded();
+  const original = await map.boundingBox();
+  async function checkHeader() {
+    const status = await page.locator('#mapStatus').boundingBox();
+    const bounds = await map.boundingBox();
+    assert.ok(status.y + status.height <= bounds.y);
+  }
+  await checkHeader();
+  await button.click();
+  assert.equal(await button.getAttribute('aria-expanded'), 'true');
+  const expanded = await map.boundingBox();
+  assert.ok(expanded.width * expanded.height > original.width * original.height);
+  assert.equal(expanded.width, page.viewportSize().width);
+  await checkHeader();
+  await page.keyboard.press('Escape');
+  assert.equal(await button.getAttribute('aria-expanded'), 'false');
+  await button.click();
+  await button.click();
+  assert.equal(await button.getAttribute('aria-expanded'), 'false');
+  const restored = await map.boundingBox();
+  assert.equal(restored.width, original.width);
+  assert.equal(restored.height, original.height);
+  await checkHeader();
+}
 async function point(page, lat, lng) {
   await page.locator('#latInput').fill(String(lat));
   await page.locator('#lngInput').fill(String(lng));
@@ -32,6 +59,8 @@ try {
   assert.equal(await page.locator('#readLat').innerText(), '-');
   assert.equal(await overlay.isChecked(), true);
   pass('地点未選択の初期表示から区域図を描画');
+  await checkMapExpansion(page);
+  pass('PCで地図を拡大・復元でき、説明文が地図に重ならない');
   await overlay.uncheck();
   await page.waitForFunction(fn => !eval(`(${fn})`)(), hasAreas.toString());
   assert.equal(await page.locator('.legend').isVisible(), false);
@@ -77,6 +106,8 @@ try {
   assert.match(await page.locator('#result').innerText(),/区域外とは断定できません/);
   pass('オフライン地名検索の案内・未収録の断定回避');
   await page.setViewportSize({width:390,height:844});
+  await checkMapExpansion(page);
+  pass('スマートフォンで地図を拡大・復元でき、説明文が地図に重ならない');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
   await page.screenshot({path:'/private/tmp/park-map-mobile.png',fullPage:true});
   pass('スマートフォン幅で横溢れがない');

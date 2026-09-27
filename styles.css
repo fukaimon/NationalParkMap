@@ -293,7 +293,33 @@ svg {
 .map-wrap,
 #map {
   min-width: 0;
-  min-height: 100vh;
+  min-height: 0;
+}
+
+.map-wrap {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+}
+
+.map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.map-toolbar .secondary-button {
+  flex: 0 0 auto;
+}
+
+.map-status {
+  flex: 1;
+  min-width: 0;
+  font-size: .8rem;
+  line-height: 1.6;
 }
 
 #map {
@@ -508,10 +534,6 @@ svg {
     border-bottom: 1px solid var(--line);
   }
 
-  .map-wrap,
-  #map {
-    min-height: 52vh;
-  }
 }
 
 .intro, .connection-status, .fine-print, .notice { margin: 0; line-height: 1.65; }
@@ -533,16 +555,24 @@ svg {
 button:disabled { opacity: .55; cursor: wait; }
 .file-button:has(input:disabled) { opacity: .55; pointer-events: none; }
 .map-wrap { position: relative; }
-.map-status { position: absolute; z-index: 500; top: 90px; left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 24px); padding: 10px 14px; border-radius: 7px; background: rgba(255,255,255,.95); box-shadow: var(--shadow); font-size: .8rem; pointer-events: none; }
 .legend { position: absolute; z-index: 500; left: 12px; bottom: 28px; display: flex; flex-wrap: wrap; gap: 9px; max-width: calc(100% - 24px); padding: 10px; background: #fff; border-radius: 7px; box-shadow: var(--shadow); font-size: .75rem; pointer-events: none; }
 .legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 2px; background: var(--zone-color); }
 @media (max-width: 760px) {
-  .app-shell { height: auto; grid-template-rows: auto 55vh; }
+  .app-shell { height: auto; grid-template-rows: auto auto; }
   .sidebar { max-height: none; overflow: visible; }
-  .map-wrap, #map { min-height: 55vh; height: 55vh; }
+  .map-wrap { height: auto; grid-template-rows: auto 55vh; }
 }
 .icon-button { flex-basis: 48px; padding: 0; white-space: nowrap; }
 
 .legend[hidden] { display: none; }
 .leaflet-control-layers label { display: block; }
-.map-status { top: 130px; }
+
+body.map-expanded { overflow: hidden; }
+.map-wrap.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  height: 100vh;
+  height: 100dvh;
+  grid-template-rows: auto minmax(0, 1fr);
+}

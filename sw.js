@@ -1,4 +1,4 @@
-const CACHE = 'park-area-shell-v3';
+const CACHE = 'park-area-shell-v4';
 const SHELL = ['./', './index.html', './styles.css', './app-icon.png', './manifest.webmanifest', './src/app.js', './src/geometry.js', './src/map-geometry.js', './src/kml.js', './src/storage.js', './src/area-worker.js', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

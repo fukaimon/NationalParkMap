@@ -8,6 +8,22 @@ let mapVersion = 0, mapTimer;
 let selectedPoint = null, evaluationVersion = 0, searchVersion = 0;
 let requestId = 0, datasetInfo = [], shellSaved = false;
 const pending = new Map();
+function setMapExpanded(expanded) {
+  $('.map-wrap').classList.toggle('is-expanded', expanded);
+  document.body.classList.toggle('map-expanded', expanded);
+  $('.sidebar').inert = expanded;
+  const button = $('#expandMapButton');
+  button.setAttribute('aria-expanded', String(expanded));
+  button.textContent = expanded ? '元の表示に戻す' : '地図を拡大';
+  map?.invalidateSize({pan: false});
+  if (!expanded) button.focus({preventScroll: true});
+}
+$('#expandMapButton').addEventListener('click', () => {
+  setMapExpanded(!$('.map-wrap').classList.contains('is-expanded'));
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('.map-wrap').classList.contains('is-expanded')) setMapExpanded(false);
+});
 const worker = new Worker(new URL('./area-worker.js', import.meta.url), {type: 'module'});
 worker.onmessage = ({data}) => {
   const request = pending.get(data.id);
@@ -201,6 +217,7 @@ function initMap() {
   try {
     if (!window.L) throw new Error('Leaflet unavailable');
     map = L.map('map', {center: [36.2, 138.25], zoom: 5, preferCanvas: true});
+    new ResizeObserver(() => map.invalidateSize({pan: false})).observe($('#map'));
     const standard = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'});
     const photo = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'});
     for (const layer of [standard, photo]) {

@@ -60,7 +60,10 @@
         </section>
       </aside>
       <section class="map-wrap" aria-label="地図">
-        <div id="mapStatus" class="map-status" role="status">地図の表示に関係なく、座標・現在地から判定できます。</div>
+        <div class="map-toolbar">
+          <div id="mapStatus" class="map-status" role="status">地図の表示に関係なく、座標・現在地から判定できます。</div>
+          <button id="expandMapButton" type="button" class="secondary-button" aria-controls="map" aria-expanded="false">地図を拡大</button>
+        </div>
         <div id="map"></div>
         <div class="legend" aria-label="地種区分の凡例"><span style="--zone-color:#b42318">特別保護</span><span style="--zone-color:#b36b00">第1種</span><span style="--zone-color:#2f855a">第2種</span><span style="--zone-color:#2563eb">第3種</span><span style="--zone-color:#0891b2">海域公園</span><span style="--zone-color:#4b5563">普通・未分類</span></div>
       </section>
