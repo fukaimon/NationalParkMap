@@ -11,7 +11,7 @@
   "icons": [
     {
       "src": "./app-icon.png",
-      "sizes": "1254x1254",
+      "sizes": "1280x1280",
       "type": "image/png",
       "purpose": "any"
     }
